@@ -1,114 +1,185 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-const csjs = require('csjs-inject')
 const bel = require('bel')
+const csjs = require('csjs-inject')
 const protocol_maker = require('protocol-maker')
-
-const { isBefore, getYear, getMonth, getDaysInMonth } = require('date-fns')
-const calendar_month = require('..')
+const foo = require('date-fns')
+const { isPast, isFuture, setMonth, getYear, getMonth, format, getDaysInMonth } = require('date-fns')
+const button = require('datdot-ui-button')
+// widgets
+const calendarMonth = require('datdot-ui-calendar-month')
+const calendarDays = require('..')
 
 var id = 0
 
+module.exports = demo
+
 function demo () {
-// ------------------------------------
-    const contacts = protocol_maker('demo', listen)
+	
+  const contacts = protocol_maker('demo', listen)
+  function listen (msg) {
+    const { head, refs, type, data, meta } = msg // receive msg
+    const [from] = head
+    const name = contacts.by_address[from].name
+    console.log('demo', { type, from, name, msg, data })
+		if (type === 'click') handle_click(name, data.name)
+    if (type === 'value-first' || type === 'value-second') return store_val(from, type, data)
+    if (type === 'clear') return clearAll()
+	}
 
-    function listen (msg) {
-        console.log('DEMO', { msg })
-        const { head, refs, type, data, meta } = msg // receive msg
-        const [from] = head
-        // send back ack
-        const name = contacts.by_address[from].name
-        if (type === 'click') {
-            const { name: target } =  data
-            const $month1 = contacts.by_name['cal-month-0']
-            const $month2 = contacts.by_name['cal-month-1']
-            if (name === 'cal-month-0') {
-                if (target === 'prev') new_pos = current_state.cal_month_1.pos - 1
-                else if (target === 'next') new_pos = current_state.cal_month_1.pos + 1
-                current_state.cal_month_1.pos = new_pos
-                $month1.notify($month1.make({ to: $month1.address, type: 'update', data : { pos: new_pos } }))
-            } else if (name === 'cal-month-1') {
-                if (target === 'prev') new_pos = current_state.cal_month_2.pos - 1
-                else if (target === 'next') new_pos = current_state.cal_month_2.pos + 1
-                current_state.cal_month_2.pos = new_pos
-                $month2.notify($month2.make({ to: $month2.address, type: 'update', data : { pos: new_pos } }))
-            }
-        }
+  // elements	
+	const current_state = {
+		first: { pos: 0, value: null },
+		second:	{ pos: 4, value: null }
+	}
+	const month_name1 = `cal-month-${id++}`
+	const month_name2 = `cal-month-${id++}`
+	const days_name1 = `cal-days-${id++}`
+	const days_name2 = `cal-days-${id++}`
+
+  const cal_month1 = calendarMonth({ pos: 3 }, contacts.add(month_name1))
+  let cal_days1 = calendarDays({name: 'calendar-days' }, contacts.add('cal-days'))
+  
+	const weekList= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+  const container = bel`<div class=${css['calendar-container']}></div>`
+
+	const cal = bel`<div class=${css.calendar}>${cal_month1}${makeWeekDays()}${cal_days1}</div>`
+  container.append(cal)
+
+  return bel`<div class=${css.datepicker}> <div class=${css["calendar-header"]}></div> ${container} </div>`
+
+  function makeWeekDays () {
+      const el = bel`<section class=${css['calendar-weekday']} role="weekday"></section>`
+      weekList.map( w => {
+          let div = bel`<div class=${css['calendar-week']} role="week">${w.slice(0 ,1)}</div>`
+          el.append(div)
+      })
+      return el
+  }
+
+  //////
+
+	function handle_click (name, target) {
+		const $cal_month = contacts.by_name[month_name1]
+		const $cal_days = contacts.by_name[days_name1]
+		let new_pos
+		if (name === 'cal-month') {
+			if (target === 'prev') new_pos = current_state.first.pos - 1
+			else if (target === 'next') new_pos = current_state.first.pos + 1
+			if ((current_state.second.pos - current_state.first.pos) === 1 && new_pos > current_state.first.pos) return
+			current_state.first.pos = new_pos
+			$cal_month.notify($cal_month.make({ to: $cal_month.address, type: 'update', data : { pos: new_pos } }))
+			$cal_days.notify($cal_days.make({ to: $cal_days.address, type: 'change', data: { current: new_pos } }))
+		}
+	}
+
+  function clearAll () {
+			const keys = get_all_cal_days()
+			keys.forEach(key => {
+				const name = contacts.by_name[key].name
+				const $name = contacts.by_name[name]
+				$name.notify($name.make({ to: $name.address, type: 'clear' }))
+			})
+  }
+
+
+  function store_val (from, type, data) {
+    const name = contacts.by_address[from].name
+    if (type === 'value-first') {
+      current_state.first.value = data.body
+      type = (name === 'calendar1') ? 'first-selected-by-startcal' : 'first-selected-by-endcal' 
+    } else if (type === 'value-second') {
+      current_state.second.value = data.body
+      type = 'second-selected' 
     }
-// ------------------------------------
-    let current_state = {
-        cal_month_1: { pos: 2 },
-        cal_month_2: { pos: 7 },
-    }
-    let counter = 0
-    const cal_month1 = calendar_month({ pos: current_state.cal_month_1.pos }, contacts.add(`cal-month-${counter++}`))
-    const cal_month2 = calendar_month({ pos: current_state.cal_month_2.pos }, contacts.add(`cal-month-${counter++}`))
+		const keys = get_all_cal_days()
+		keys.forEach(key => {
+			const cal_name = contacts.by_name[key].name
+			if (cal_name === name) return
+			const $name = contacts.by_name[cal_name]
+			$name.notify($name.make({ to: $name.address, type, date: { data } } ))
+		})
+  }
 
-    const el = bel`
-    <div class=${css.wrap}>
-      <section class=${css["ui-widgets"]}>
-        <div class=${css['ui-calendar-header']}>
-          <h2 class=${css.title}>Calendar Header</h2>
-          <div class=${css["custom-header"]}>${cal_month1}</div>
-          <div class=${css["calendar-header-fullsize"]}>${cal_month2}</div>
-        </div>
-      </section>
-    </div>`
+	function get_all_cal_days () {
+		const keys = Object.keys(contacts.by_name)
+		return keys.filter(key => contacts.by_name[key].name.includes('cal-days'))
+	}
 
-  return el
-    
 }
-
 
 const css = csjs`
+html {
+	height: 100%;
+}
 body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    background-color: #F2F2F2;
-    height: 100%;
+	margin: 0;
+	padding: 0;
+	font-family: Arial, Helvetica, sans-serif;
+	background-color: #F2F2F2;
+	height: 100%;
 }
-button:active, button:focus {
-    outline: dotted 1px #c9c9c9;
+.datepicker {
+    position: relative;
+    max-width: 510px;
 }
-.wrap {
+.datepicker-body {
     display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: 75vh 25vh;
-    min-width: 520px
+    grid-template-rows: auto;
+    grid-template-columns: repeat(2, 210px);
+    grid-gap: 35px;
 }
-.ui-widgets {
-    padding: 20px;
-    overflow-y: auto;
+.btn {
+    background: none;
+    border: none;
+    border-radius: 50px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    transition: background-color 0.3s ease-in-out;
+    cursor: pointer;
 }
-.ui-widgets > div {
-    margin-bottom: 30px;
-    padding: 10px 20px 20px 20px;
-    background-color: #fff;
+.btn:active, .btn:hover {
+    background-color: #C9C9C9;
+}
+.prev {}
+.next {}
+.icon svg path {
+    transition: stroke 0.25s ease-in-out;
+}
+.icon-prev {}
+.icon-next {}
+.calendar-header {
+    position: absolute;
+    z-index: 9;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+.calendar-container {
+    display: flex;
+}
+.calendar-weekday {
+    display: grid;
+    grid-template-rows: 30px;
+    grid-template-columns: repeat(7, minmax(30px, auto));
+    justify-items: center;
+    font-size: 12px;
+}
+.calendar-week {
+    
+}
+.calendar {
+    margin-left: 30px;
 }
 .title {
-    color: #008dff;
-}
-.ui-calendar-header {
-}
-.custom-header {
-    background-color: #f2f2f2;
-    max-width: 25%;
-    min-width: 225px;
-    border-radius: 50px;
-}
-.custom-header > [class^="calendar-header"] {
-    grid-template-rows: 30px;
-}
-.custom-header > [class^="calendar-header"] h3 {
-    font-size: 16px;
-}
-.calendar-header-fullsize {
+    font-size: 18px;
+    text-align: center;
 }
 `
 
 document.body.append(demo())
-},{"..":305,"bel":3,"csjs-inject":6,"date-fns":149,"protocol-maker":301}],2:[function(require,module,exports){
+},{"..":306,"bel":3,"csjs-inject":6,"datdot-ui-button":296,"datdot-ui-calendar-month":297,"date-fns":149,"protocol-maker":302}],2:[function(require,module,exports){
 var trailingNewlineRegex = /\n[\s]+$/
 var leadingNewlineRegex = /^\n[\s]+/
 var trailingSpaceRegex = /[\s]+$/
@@ -342,7 +413,7 @@ module.exports = hyperx(belCreateElement, {comments: true})
 module.exports.default = module.exports
 module.exports.createElement = belCreateElement
 
-},{"./appendChild":2,"hyperx":303}],4:[function(require,module,exports){
+},{"./appendChild":2,"hyperx":304}],4:[function(require,module,exports){
 (function (global){(function (){
 'use strict';
 
@@ -361,7 +432,7 @@ function csjsInserter() {
 module.exports = csjsInserter;
 
 }).call(this)}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"csjs":9,"insert-css":304}],5:[function(require,module,exports){
+},{"csjs":9,"insert-css":305}],5:[function(require,module,exports){
 'use strict';
 
 module.exports = require('csjs/get-css');
@@ -22043,7 +22114,162 @@ const default_theme = `
 `
 sheet.replaceSync(default_theme)
 default_opts.theme = default_theme
-},{"datdot-ui-icon":297,"protocol-maker":301}],297:[function(require,module,exports){
+},{"datdot-ui-icon":298,"protocol-maker":302}],297:[function(require,module,exports){
+const bel = require('bel')
+const csjs = require('csjs-inject')
+const { format, setMonth, getMonth, getYear, getDaysInMonth } = require('date-fns')
+const protocol_maker = require('protocol-maker')
+const button = require('datdot-ui-button')
+
+var id = 0
+var count = 0
+const sheet = new CSSStyleSheet()
+const default_opts = {
+	name: 'calendar-month',
+	pos: 0,
+	theme: get_theme()
+}
+sheet.replaceSync(default_opts.theme)
+
+module.exports = calendar_month
+
+calendar_month.help = () => { return { opts: default_opts } }
+
+function calendar_month(opts, parent_wire) {
+	const { 
+		name = default_opts.name,
+		pos = default_opts.pos,
+		theme = ``
+	} = opts
+	
+	const current_state =  { opts: { name, pos, sheets: [default_opts.theme, theme] } }
+
+	// protocol
+  const initial_contacts = { 'parent': parent_wire }
+  const contacts = protocol_maker('input-number', listen, initial_contacts)
+
+  function listen (msg) {
+      const { head, refs, type, data, meta } = msg // receive msg
+      const [from] = head
+      const name = contacts.by_address[from].name
+      console.log('Cal month', { type, from, name, msg, data })
+			if (type === 'help') {
+				const $from = contacts.by_address[from]
+				$from.notify($from.make({ to: $from.address, type: 'help', data: { state: get_current_state() }, refs: { cause: head }}))                         
+			}
+      if (type === 'update') handle_update(data)
+  }
+
+	// make calendar month
+	let date 
+	if (!pos) date = new Date()
+	else date = setMonth(new Date(), pos)
+	if (!pos && pos !== 0) pos = getMonth(date)
+	let year = getYear(date)
+	let month = format(date, 'MMMM')
+	
+	const el = document.createElement('calendar-month')
+	const shadow = el.attachShadow({mode: 'closed'})
+
+	const title = document.createElement('h3')
+	title.append(month, ' ', year)
+	title.classList.add('title')
+
+	let path = 'https://raw.githubusercontent.com/datdot-ui/icon/main/src/svg/'
+	const prev = button({ name: 'prev', icons: [{ name: 'arrow-left', path }] }, contacts.add('prev'))
+	prev.onclick = () => handle_onclick(prev)
+	const next = button({ name: 'next', icons: [{ name: 'arrow-right', path}] }, contacts.add('next'))
+	next.onclick = () => handle_onclick(next)
+	
+	var header = document.createElement('div')
+	header.append(prev, title, next)
+	header.classList.add('calendar-header')
+
+	const custom_theme = new CSSStyleSheet()
+	custom_theme.replaceSync(theme)
+	shadow.adoptedStyleSheets = [sheet, custom_theme]
+
+	shadow.append(header)
+
+	return el
+	
+	function handle_onclick (target) {
+		const name = target.getAttribute('aria-label')
+		const $parent = contacts.by_name['parent']
+		$parent.notify($parent.make({ to: $parent.address, type: 'click', data: { name }}))
+	} 
+
+	function handle_update (data) {
+		const { pos } = data
+		if (pos || pos === 0) {
+			current_state. pos = pos
+			update_month(pos)
+		}
+	}
+
+	function update_month (pos) {
+		let date = setMonth(new Date(), pos)
+		let year = getYear(date)
+		let month = format(date, 'MMMM')
+
+		title.innerHTML = `${month} ${year}`
+	}
+
+	// get current state
+	function get_current_state () {
+		return  {
+			opts: current_state.opts,
+			contacts
+		}
+	}
+}
+
+function get_theme () {
+	return `
+	.calendar-header {
+			display: grid;
+			grid-template-rows: auto;
+			grid-template-columns: minmax(25px, 30px) auto minmax(25px, 30px);
+			align-items: center;
+	}
+	.calendar-header  > :nth-last-child(1) {
+		justify-content: end;
+	}
+	.datepicker-header {
+			display: grid;
+			grid-template-rows: 30px;
+			grid-template-columns: auto;
+			align-items: center;
+			margin-bottom: 12px;
+	}
+	.datepicker-header > h3 {
+			margin: 0;
+	}
+	.btn {
+			background: none;
+			border: none;
+			border-radius: 50px;
+			width: 30px;
+			height: 30px;
+			padding: 0;
+			transition: background-color 0.3s ease-in-out;
+			cursor: pointer;
+	}
+	.btn:active, .btn:hover {
+			background-color: #C9C9C9;
+	}
+	.btn:active div > svg path, .btn:hover div > svg path {
+			
+	}
+	.icon svg path {
+			transition: stroke 0.25s ease-in-out;
+	}
+	.title {
+			text-align: center;
+	}
+	`
+}
+},{"bel":3,"csjs-inject":6,"datdot-ui-button":296,"date-fns":149,"protocol-maker":302}],298:[function(require,module,exports){
 (function (__filename){(function (){
 const style_sheet = require('support-style-sheet')
 const svg = require('svg')
@@ -22131,7 +22357,7 @@ module.exports = ({name, path, is_shadow = false, theme}, parent_protocol) => {
 }
 
 }).call(this)}).call(this,"/node_modules/.pnpm/github.com+datdot-ui+button@7109da8a8bc9deef9dae1296ac4481f025bfde24/node_modules/datdot-ui-icon/src/index.js")
-},{"message-maker":300,"support-style-sheet":298,"svg":299}],298:[function(require,module,exports){
+},{"message-maker":301,"support-style-sheet":299,"svg":300}],299:[function(require,module,exports){
 module.exports = support_style_sheet
 function support_style_sheet (root, style) {
     return (() => {
@@ -22147,7 +22373,7 @@ function support_style_sheet (root, style) {
         }
     })()
 }
-},{}],299:[function(require,module,exports){
+},{}],300:[function(require,module,exports){
 module.exports = svg
 function svg (path) {
     const span = document.createElement('span')
@@ -22161,7 +22387,7 @@ function svg (path) {
     }
     return span
 }   
-},{}],300:[function(require,module,exports){
+},{}],301:[function(require,module,exports){
 module.exports = function message_maker (from) {
   let msg_id = 0
   return function make ({to, type, data = null, refs = {} }) {
@@ -22169,7 +22395,7 @@ module.exports = function message_maker (from) {
       return { head: [from, to, msg_id++], refs, type, data, meta: { stack }}
   }
 }
-},{}],301:[function(require,module,exports){
+},{}],302:[function(require,module,exports){
 // const path = require('path')
 // const filename = path.basename(__filename)
 const message_maker = require('message-maker')
@@ -22302,7 +22528,7 @@ const name_routes = {
     },
 }
 */
-},{"message-maker":300}],302:[function(require,module,exports){
+},{"message-maker":301}],303:[function(require,module,exports){
 module.exports = attributeToProperty
 
 var transform = {
@@ -22323,7 +22549,7 @@ function attributeToProperty (h) {
   }
 }
 
-},{}],303:[function(require,module,exports){
+},{}],304:[function(require,module,exports){
 var attrToProp = require('hyperscript-attribute-to-property')
 
 var VAR = 0, TEXT = 1, OPEN = 2, CLOSE = 3, ATTR = 4
@@ -22620,7 +22846,7 @@ var closeRE = RegExp('^(' + [
 ].join('|') + ')(?:[\.#][a-zA-Z0-9\u007F-\uFFFF_:-]+)*$')
 function selfClosing (tag) { return closeRE.test(tag) }
 
-},{"hyperscript-attribute-to-property":302}],304:[function(require,module,exports){
+},{"hyperscript-attribute-to-property":303}],305:[function(require,module,exports){
 var inserted = {};
 
 module.exports = function (css, options) {
@@ -22644,159 +22870,299 @@ module.exports = function (css, options) {
     }
 };
 
-},{}],305:[function(require,module,exports){
-const bel = require('bel')
-const csjs = require('csjs-inject')
-const { format, setMonth, getMonth, getYear, getDaysInMonth } = require('date-fns')
+},{}],306:[function(require,module,exports){
 const protocol_maker = require('protocol-maker')
+const { isToday, format, isPast, getDay, setMonth, getDate, getMonth, getYear, getDaysInMonth } = require('date-fns')
 const button = require('datdot-ui-button')
 
 var id = 0
 var count = 0
 const sheet = new CSSStyleSheet()
 const default_opts = {
-	name: 'calendar-month',
-	pos: 0,
+	name: 'calendar-days',
+	month: init_date().month,
+	days: init_date().days,
+	year: init_date().year,
+	status: 'cleared',
+	value: null,
+	start_cal: true,
 	theme: get_theme()
 }
 sheet.replaceSync(default_opts.theme)
 
-module.exports = calendar_month
+module.exports = calendar_days
 
-calendar_month.help = () => { return { opts: default_opts } }
-
-function calendar_month(opts, parent_wire) {
+function calendar_days (opts, parent_wire) {
 	const { 
 		name = default_opts.name,
-		pos = default_opts.pos,
-		theme = ``
-	} = opts
-	
-	const current_state =  { opts: { name, pos, sheets: [default_opts.theme, theme] } }
+		month = default_opts.month,
+		days = default_opts.days,
+		year = default_opts.year,
+		status = default_opts.status,
+		value = default_opts.value,
+		start_cal = default_opts.start_cal,
+		theme = '' } = opts
 
-	// protocol
+	const current_state =  { opts: { name, month, days, year, status, value, start_cal, sheets: [default_opts.theme, theme] } }
+  
+  // protocol
   const initial_contacts = { 'parent': parent_wire }
   const contacts = protocol_maker('input-number', listen, initial_contacts)
-
+  
   function listen (msg) {
-      const { head, refs, type, data, meta } = msg // receive msg
-      const [from] = head
-      const name = contacts.by_address[from].name
-      console.log('Cal month', { type, from, name, msg, data })
-			if (type === 'help') {
-				const $from = contacts.by_address[from]
-				$from.notify($from.make({ to: $from.address, type: 'help', data: { state: get_current_state() }, refs: { cause: head }}))                         
-			}
-      if (type === 'update') handle_update(data)
+		const { head, refs, type, data, meta } = msg // receive msg
+		const [from, to] = head
+		console.log('Cal days', { type, name: contacts.by_address[from].name, msg, data })
+		// handlers
+		if (type === 'clear') return clear_self()
+		if (type === 'selecting-second') return colorRange(0, current_state.opts.value)
+		if (type === 'first-selected-by-startcal') return setStatus('first-selected-by-startcal')
+		if (type === 'first-selected-by-endcal') return setStatus('first-selected-by-endcal')
+		if (type === 'second-selected') return setStatus('second-selected-by-other')
+		if (type === 'color-from-start') return colorRange(0, current_state.opts.value)
+		if (type === 'color-to-end') return colorRange(current_state.opts.value, days + 1)
+		if (type === 'change') return render_new_cal(data)
+		// if (type === 'color-range-from-start') return 
+		// if (type === 'color-range-to-end') return 
+		// if (type === 'not-selecting-second') {}
   }
 
-	// make calendar month
-	let date 
-	if (!pos) date = new Date()
-	else date = setMonth(new Date(), pos)
-	if (!pos && pos !== 0) pos = getMonth(date)
-	let year = getYear(date)
-	let month = format(date, 'MMMM')
-	
-	const el = document.createElement('calendar-month')
+	const $parent = contacts.by_name['parent']
+
+  // calendar days
+	const el = document.createElement('calendar-days')
 	const shadow = el.attachShadow({mode: 'closed'})
 
-	const title = document.createElement('h3')
-	title.append(month, ' ', year)
-	title.classList.add('title')
+	const calendar = makeDays(days)
+	let buttons = [...calendar.children]
+	calendar.onmousemove = onmousemove
+	calendar.onclick = onclick
+	calendar.onmouseleave = onmouseleave
+	calendar.onmouseenter = onmouseenter
 
-	let path = 'https://raw.githubusercontent.com/datdot-ui/icon/main/src/svg/'
-	const prev = button({ name: 'prev', icons: [{ name: 'arrow-left', path }] }, contacts.add('prev'))
-	prev.onclick = () => handle_onclick(prev)
-	const next = button({ name: 'next', icons: [{ name: 'arrow-right', path}] }, contacts.add('next'))
-	next.onclick = () => handle_onclick(next)
-	
-	var header = document.createElement('div')
-	header.append(prev, title, next)
-	header.classList.add('calendar-header')
+	document.body.onclick = clear_all
 
 	const custom_theme = new CSSStyleSheet()
 	custom_theme.replaceSync(theme)
 	shadow.adoptedStyleSheets = [sheet, custom_theme]
 
-	shadow.append(header)
-
+	shadow.append(calendar)
 	return el
 	
-	function handle_onclick (target) {
-		const name = target.getAttribute('aria-label')
-		const $parent = contacts.by_name['parent']
-		$parent.notify($parent.make({ to: $parent.address, type: 'click', data: { name }}))
-	} 
-
-	function handle_update (data) {
-		const { pos } = data
-		if (pos || pos === 0) {
-			current_state. pos = pos
-			update_month(pos)
-		}
-	}
-
-	function update_month (pos) {
-		let date = setMonth(new Date(), pos)
-		let year = getYear(date)
-		let month = format(date, 'MMMM')
-
-		title.innerHTML = `${month} ${year}`
-	}
-
-	// get current state
-	function get_current_state () {
-		return  {
-			opts: current_state.opts,
-			contacts
-		}
+// event handlers
+function onmousemove (event) {
+	console.log('onmousemove - current status', name, current_state.opts.status)
+	const btn = event.target
+	const num = parseInt(btn.dataset.num)
+	if (!num || btn.classList.contains('disabled-day')) return
+	if (current_state.opts.status === 'first-selected-by-self') return markRange(current_state.opts.value, num)
+	if (current_state.opts.status === 'first-selected-by-startcal') return markRange(0, num)
+	if (current_state.opts.status === 'first-selected-by-endcal') return markRange(num, days + 1)
+}
+function onclick (event) {
+	event.stopPropagation()
+	const btn = event.target
+	const current = parseInt(btn.dataset.num)
+	if (!current || btn.classList.contains('disabled-day')) return
+	console.log('onclick - current status', current_state.opts.status, current )
+	if (current_state.opts.status === 'cleared') return selectFirst(btn, current)
+	if (current_state.opts.status === 'first-selected-by-self') return selectSecond(btn, current)
+	if (current_state.opts.status === 'first-selected-by-startcal') return selectSecond(btn, current)
+	if (current_state.opts.status === 'first-selected-by-endcal') return selectSecond(btn, current)
+	if (current_state.opts.status === 'second-selected-by-self') return selectFirst(btn, current)
+	if (current_state.opts.status === 'second-selected-by-other') return selectFirst(btn, current)
+}
+function onmouseleave (event) {
+	console.log('onmouseleave - first selected', current_state.opts.status)
+	if (current_state.opts.status === 'first-selected-by-startcal') return unmark_self()
+	if (current_state.opts.status === 'first-selected-by-endcal') return unmark_self()
+	if (current_state.opts.status === 'first-selected-by-self') {
+		// current_state.opts.value = void 0
+		if (current_state.opts.start_cal) markRange(current_state.opts.value, days + 1)
+		else markRange(0, current_state.opts.value)
 	}
 }
+function onmouseenter (event) {
+	console.log('onmouseenter - first selected', current_state.opts.status)
+	if (current_state.opts.status === 'first-selected-by-startcal') return notifyOther()
+	if (current_state.opts.status === 'first-selected-by-endcal') return notifyOther()
+}
+
+	// helpers
+	function unmark_self () {
+		for (var i = 0; i < buttons.length; i++) {
+			buttons[i].classList.remove('date-in-range')
+			buttons[i].classList.remove('date-selected')
+		}		
+		current_state.opts.value = void 0
+		// remove just selection and styling, don't reset the status
+	}
+
+	function clear_self () {
+		current_state.opts.status = 'cleared'
+		unmark_self()
+	}
+
+	function clear_all () {
+		$parent.notify($parent.make({ to: $parent.address, type: 'clear', data: { body: '' } }))
+	}
+
+	function selectFirst (btn, current) {
+		clear_all()
+
+		btn.classList.add('date-selected')
+		setStatus('first-selected-by-self')
+		current_state.opts.value = current
+		$parent.notify($parent.make({ to: $parent.address, type: 'value-first', data: { body: [year, month+1, current_state.opts.value] } }))
+	}
+
+	function selectSecond (btn, current) {
+		btn.classList.add('date-selected')
+		setStatus('second-selected-by-self')
+		current_state.opts.value = current
+		$parent.notify($parent.make({ to: $parent.address, type: 'value-second', data: { body: [year, month+1, current_state.opts.value] } }))
+	}
+
+	function setStatus( nextStatus ) {
+		console.log('setStatus', JSON.stringify({ type: 'status', name,  data: { body: nextStatus } }, 0, 2))
+		current_state.opts.status = nextStatus
+		$parent.notify($parent.make({ to: $parent.address, type: 'status', data: { status: nextStatus } }))
+	}
+
+	function render_new_cal(data) {
+		const { current } = data
+		let date = setMonth(new Date(), current)
+		let year = getYear(date)
+		let days = getDaysInMonth(date)
+		year = year
+		days = days
+
+		const cal = makeDays(days)
+		buttons = [...cal.children]
+		cal.onmousemove = onmousemove
+		cal.onclick = onclick
+		cal.onmouseleave = onmouseleave
+		cal.onmouseenter = onmouseenter
+		el.innerHTML = ''
+		el.append(cal)	
+	}
+
+	function markRange (A,B) {
+		console.log('mark range', {A, B})
+		if (A === B) return // onlyKeepFirst()
+		if (A < B) colorRange(A, B)
+		else colorRange(B, A)
+	}
+
+	function colorRange (start, end) {
+		buttons.map( btn => {
+			let current = parseInt(btn.dataset.num)
+			if (!current || btn.classList.contains('disabled-day')) return
+			btn.classList.remove('date-in-range')
+			if (current < start || current > end) {
+				btn.classList.remove('date-selected')
+			}
+			if (current > start && current < end) {
+				console.log('adding date-in-range class for', {current})
+				btn.classList.add('date-in-range')
+			}
+		})
+	}
+		
+	function notifyOther () { $parent.notify($parent.make({ to: $parent.address, type: 'selecting-second' })) }
+
+	function makeDays (days) {
+		const el = document.createElement('section')
+		el.classList.add('calendar-days')
+		getSpaceInPrevMonth(el)
+
+		for (let i = 1; i < days + 1; i++) {
+			let formatDate = format(new Date(year, month, i), 'd MMMM yyyy, EEEE')
+			let btn = button({ name: 'buton', text: i}, contacts.add(`button-${i}`))
+			btn.setAttribute('tabIndex', '-1')
+			btn.setAttribute('aria-label', formatDate)
+			btn.setAttribute('data-date', `${year}-${month+1}-${i}`)
+			btn.setAttribute('data-num', `${i}`)
+			if (isToday(new Date(year, month, i)) ) {
+				btn.classList.add('today')
+				btn.setAttribute('aria-today', true)
+			} else { 
+				btn.classList.add('day')
+				if ( isPast(new Date(year, month, i)) ) btn.classList.add('disabled-day')
+				btn.setAttribute('aria-today', false)
+			}
+			el.append(btn)
+		}
+		
+		return el
+	}
+
+	function getSpaceInPrevMonth (el) {
+		// get days in previous month
+		let daysInPrevMonth = getDaysInMonth(new Date(year, month-1))
+		// get day in prev month which means to add how many spans
+		let dayInPrevMonth = getDay(new Date(year, month-1, daysInPrevMonth))
+		for (let s = dayInPrevMonth; s > 0; s--) {
+				let span = document.createElement('div')
+				span.classList.add('day-prev')
+				el.append((span))
+		}
+	}
+
+}
+
+	function init_date () {
+		const date = new Date()
+		let year = getYear(date)
+		let month = getMonth(date)
+		let days = getDaysInMonth(date)
+		return { year, month, days }
+	}
+
 
 function get_theme () {
 	return `
-	.calendar-header {
-			display: grid;
-			grid-template-rows: auto;
-			grid-template-columns: minmax(25px, 30px) auto minmax(25px, 30px);
-			align-items: center;
-	}
-	.calendar-header  > :nth-last-child(1) {
-		justify-content: end;
-	}
-	.datepicker-header {
-			display: grid;
-			grid-template-rows: 30px;
-			grid-template-columns: auto;
-			align-items: center;
-			margin-bottom: 12px;
-	}
-	.datepicker-header > h3 {
-			margin: 0;
-	}
-	.btn {
-			background: none;
-			border: none;
-			border-radius: 50px;
-			width: 30px;
-			height: 30px;
-			padding: 0;
-			transition: background-color 0.3s ease-in-out;
-			cursor: pointer;
-	}
-	.btn:active, .btn:hover {
-			background-color: #C9C9C9;
-	}
-	.btn:active div > svg path, .btn:hover div > svg path {
-			
-	}
-	.icon svg path {
-			transition: stroke 0.25s ease-in-out;
-	}
-	.title {
-			text-align: center;
-	}
-	`
+	.calendar-days {
+    display: grid;
+    grid-template-rows: auto;
+    grid-template-columns: repeat(7, minmax(30px, auto));
+    justify-items: center;
 }
-},{"bel":3,"csjs-inject":6,"datdot-ui-button":296,"date-fns":149,"protocol-maker":301}]},{},[1]);
+button {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+.day {
+    display: grid;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    transition: color 0.25s, background-color 0.25s ease-in-out;
+}
+.day:hover {
+    color: #fff;
+    background-color: #000;
+}
+.today {
+    background-color: #f2f2f2;
+}
+.date-selected, .date-selected:hover {
+    color: #fff;
+    background-color: #000;
+}
+.day-prev {}
+.disabled-day, .disabled-day:hover {
+    color: #BBBBBB;
+    background: none;
+    cursor: default;
+}
+.date-in-range {
+    color: #000;
+    background-color: #EAEAEA;
+}
+`
+}
+},{"datdot-ui-button":296,"date-fns":149,"protocol-maker":302}]},{},[1]);

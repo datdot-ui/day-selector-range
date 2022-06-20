@@ -1,108 +1,179 @@
-const csjs = require('csjs-inject')
 const bel = require('bel')
+const csjs = require('csjs-inject')
 const protocol_maker = require('protocol-maker')
-
-const { isBefore, getYear, getMonth, getDaysInMonth } = require('date-fns')
-const calendar_month = require('..')
+const foo = require('date-fns')
+const { isPast, isFuture, setMonth, getYear, getMonth, format, getDaysInMonth } = require('date-fns')
+const button = require('datdot-ui-button')
+// widgets
+const calendarMonth = require('datdot-ui-calendar-month')
+const calendarDays = require('..')
 
 var id = 0
 
+module.exports = demo
+
 function demo () {
-// ------------------------------------
-    const contacts = protocol_maker('demo', listen)
+	
+  const contacts = protocol_maker('demo', listen)
+  function listen (msg) {
+    const { head, refs, type, data, meta } = msg // receive msg
+    const [from] = head
+    const name = contacts.by_address[from].name
+    console.log('demo', { type, from, name, msg, data })
+		if (type === 'click') handle_click(name, data.name)
+    if (type === 'value-first' || type === 'value-second') return store_val(from, type, data)
+    if (type === 'clear') return clearAll()
+	}
 
-    function listen (msg) {
-        console.log('DEMO', { msg })
-        const { head, refs, type, data, meta } = msg // receive msg
-        const [from] = head
-        // send back ack
-        const name = contacts.by_address[from].name
-        if (type === 'click') {
-            const { name: target } =  data
-            const $month1 = contacts.by_name['cal-month-0']
-            const $month2 = contacts.by_name['cal-month-1']
-            if (name === 'cal-month-0') {
-                if (target === 'prev') new_pos = current_state.cal_month_1.pos - 1
-                else if (target === 'next') new_pos = current_state.cal_month_1.pos + 1
-                current_state.cal_month_1.pos = new_pos
-                $month1.notify($month1.make({ to: $month1.address, type: 'update', data : { pos: new_pos } }))
-            } else if (name === 'cal-month-1') {
-                if (target === 'prev') new_pos = current_state.cal_month_2.pos - 1
-                else if (target === 'next') new_pos = current_state.cal_month_2.pos + 1
-                current_state.cal_month_2.pos = new_pos
-                $month2.notify($month2.make({ to: $month2.address, type: 'update', data : { pos: new_pos } }))
-            }
-        }
+  // elements	
+	const current_state = {
+		first: { pos: 0, value: null },
+		second:	{ pos: 4, value: null }
+	}
+	const month_name1 = `cal-month-${id++}`
+	const month_name2 = `cal-month-${id++}`
+	const days_name1 = `cal-days-${id++}`
+	const days_name2 = `cal-days-${id++}`
+
+  const cal_month1 = calendarMonth({ pos: 3 }, contacts.add(month_name1))
+  let cal_days1 = calendarDays({name: 'calendar-days' }, contacts.add('cal-days'))
+  
+	const weekList= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+  const container = bel`<div class=${css['calendar-container']}></div>`
+
+	const cal = bel`<div class=${css.calendar}>${cal_month1}${makeWeekDays()}${cal_days1}</div>`
+  container.append(cal)
+
+  return bel`<div class=${css.datepicker}> <div class=${css["calendar-header"]}></div> ${container} </div>`
+
+  function makeWeekDays () {
+      const el = bel`<section class=${css['calendar-weekday']} role="weekday"></section>`
+      weekList.map( w => {
+          let div = bel`<div class=${css['calendar-week']} role="week">${w.slice(0 ,1)}</div>`
+          el.append(div)
+      })
+      return el
+  }
+
+  //////
+
+	function handle_click (name, target) {
+		const $cal_month = contacts.by_name[month_name1]
+		const $cal_days = contacts.by_name[days_name1]
+		let new_pos
+		if (name === 'cal-month') {
+			if (target === 'prev') new_pos = current_state.first.pos - 1
+			else if (target === 'next') new_pos = current_state.first.pos + 1
+			if ((current_state.second.pos - current_state.first.pos) === 1 && new_pos > current_state.first.pos) return
+			current_state.first.pos = new_pos
+			$cal_month.notify($cal_month.make({ to: $cal_month.address, type: 'update', data : { pos: new_pos } }))
+			$cal_days.notify($cal_days.make({ to: $cal_days.address, type: 'change', data: { current: new_pos } }))
+		}
+	}
+
+  function clearAll () {
+			const keys = get_all_cal_days()
+			keys.forEach(key => {
+				const name = contacts.by_name[key].name
+				const $name = contacts.by_name[name]
+				$name.notify($name.make({ to: $name.address, type: 'clear' }))
+			})
+  }
+
+
+  function store_val (from, type, data) {
+    const name = contacts.by_address[from].name
+    if (type === 'value-first') {
+      current_state.first.value = data.body
+      type = (name === 'calendar1') ? 'first-selected-by-startcal' : 'first-selected-by-endcal' 
+    } else if (type === 'value-second') {
+      current_state.second.value = data.body
+      type = 'second-selected' 
     }
-// ------------------------------------
-    let current_state = {
-        cal_month_1: { pos: 2 },
-        cal_month_2: { pos: 7 },
-    }
-    let counter = 0
-    const cal_month1 = calendar_month({ pos: current_state.cal_month_1.pos }, contacts.add(`cal-month-${counter++}`))
-    const cal_month2 = calendar_month({ pos: current_state.cal_month_2.pos }, contacts.add(`cal-month-${counter++}`))
+		const keys = get_all_cal_days()
+		keys.forEach(key => {
+			const cal_name = contacts.by_name[key].name
+			if (cal_name === name) return
+			const $name = contacts.by_name[cal_name]
+			$name.notify($name.make({ to: $name.address, type, date: { data } } ))
+		})
+  }
 
-    const el = bel`
-    <div class=${css.wrap}>
-      <section class=${css["ui-widgets"]}>
-        <div class=${css['ui-calendar-header']}>
-          <h2 class=${css.title}>Calendar Header</h2>
-          <div class=${css["custom-header"]}>${cal_month1}</div>
-          <div class=${css["calendar-header-fullsize"]}>${cal_month2}</div>
-        </div>
-      </section>
-    </div>`
+	function get_all_cal_days () {
+		const keys = Object.keys(contacts.by_name)
+		return keys.filter(key => contacts.by_name[key].name.includes('cal-days'))
+	}
 
-  return el
-    
 }
-
 
 const css = csjs`
+html {
+	height: 100%;
+}
 body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    background-color: #F2F2F2;
-    height: 100%;
+	margin: 0;
+	padding: 0;
+	font-family: Arial, Helvetica, sans-serif;
+	background-color: #F2F2F2;
+	height: 100%;
 }
-button:active, button:focus {
-    outline: dotted 1px #c9c9c9;
+.datepicker {
+    position: relative;
+    max-width: 510px;
 }
-.wrap {
+.datepicker-body {
     display: grid;
-    grid-template-columns: 1fr;
-    grid-template-rows: 75vh 25vh;
-    min-width: 520px
+    grid-template-rows: auto;
+    grid-template-columns: repeat(2, 210px);
+    grid-gap: 35px;
 }
-.ui-widgets {
-    padding: 20px;
-    overflow-y: auto;
+.btn {
+    background: none;
+    border: none;
+    border-radius: 50px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    transition: background-color 0.3s ease-in-out;
+    cursor: pointer;
 }
-.ui-widgets > div {
-    margin-bottom: 30px;
-    padding: 10px 20px 20px 20px;
-    background-color: #fff;
+.btn:active, .btn:hover {
+    background-color: #C9C9C9;
+}
+.prev {}
+.next {}
+.icon svg path {
+    transition: stroke 0.25s ease-in-out;
+}
+.icon-prev {}
+.icon-next {}
+.calendar-header {
+    position: absolute;
+    z-index: 9;
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+.calendar-container {
+    display: flex;
+}
+.calendar-weekday {
+    display: grid;
+    grid-template-rows: 30px;
+    grid-template-columns: repeat(7, minmax(30px, auto));
+    justify-items: center;
+    font-size: 12px;
+}
+.calendar-week {
+    
+}
+.calendar {
+    margin-left: 30px;
 }
 .title {
-    color: #008dff;
-}
-.ui-calendar-header {
-}
-.custom-header {
-    background-color: #f2f2f2;
-    max-width: 25%;
-    min-width: 225px;
-    border-radius: 50px;
-}
-.custom-header > [class^="calendar-header"] {
-    grid-template-rows: 30px;
-}
-.custom-header > [class^="calendar-header"] h3 {
-    font-size: 16px;
-}
-.calendar-header-fullsize {
+    font-size: 18px;
+    text-align: center;
 }
 `
 

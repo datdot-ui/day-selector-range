@@ -1,7 +1,7 @@
 {
-  "name": "datdot-ui-calendar-month",
+  "name": "datdot-ui-calendar-days",
   "version": "0.0.4-alpha",
-  "description": "vanilla js calendar-month component",
+  "description": "vanilla js calendar-days component",
   "main": "src/index.js",
   "scripts": {
     "start": "budo demo/demo.js:bundle.js --open --live",
@@ -10,17 +10,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/datdot-ui/calendar-month.git"
+    "url": "git+https://github.com/datdot-ui/calendar-days.git"
   },
   "keywords": [
     "datdot",
     "ui",
     "widget",
-    "calendar-month"
+    "calendar-days"
   ],
   "author": "ninabreznik",
   "license": "MIT",
-  "homepage": "https://github.com/datdot-ui/calendar-month#readme",
+  "homepage": "https://github.com/datdot-ui/calendar-days#readme",
   "devDependencies": {
     "browserify": "^17.0.0",
     "budo": "^11.6.4"
@@ -29,6 +29,7 @@
     "bel": "^6.0.0",
     "csjs-inject": "^1.0.1",
     "datdot-ui-button": "github:datdot-ui/button#v0.0.4-alpha",
+    "datdot-ui-calendar-days": "github:datdot-ui/calendar-days#v0.0.4-alpha",
     "date-fns": "^2.28.0",
     "protocol-maker": "github:datdotorg/protocol-maker#v0.0.1-alpha"
   }
