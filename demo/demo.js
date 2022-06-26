@@ -21,77 +21,128 @@ function demo () {
     const name = contacts.by_address[from].name
     console.log('demo', { type, from, name, msg, data })
 		if (type === 'click') handle_click(name, data.name)
-    if (type === 'value-first' || type === 'value-second') return store_val(from, type, data)
+    if (type === 'value-first' || type === 'value-second') return handle_selection(from, type, data)
     if (type === 'clear') return clearAll()
 	}
 
   // elements	
 	const current_state = {
-		first: { pos: 0, value: null },
-		second:	{ pos: 4, value: null }
+		first: { pos: 1, value: null },
+		second:	{ pos: 7, value: null }
 	}
-	const month_name1 = `cal-month-${id++}`
-	const month_name2 = `cal-month-${id++}`
-	const days_name1 = `cal-days-${id++}`
-	const days_name2 = `cal-days-${id++}`
+	const month_name1 = `cal-month-1`
+	const days_name1 = `cal-days-1`
+	const month_name2 = `cal-month-2`
+	const days_name2 = `cal-days-2`
 
-  const cal_month1 = calendarMonth({ pos: 3 }, contacts.add(month_name1))
-  let cal_days1 = calendarDays({name: 'calendar-days' }, contacts.add('cal-days'))
+  const date1 = setMonth(new Date(), current_state.first.pos)
+  current_state.first.days = getDaysInMonth(date1)
+  current_state.first.year = getYear(date1)
+  
+  const date2 = setMonth(new Date(), current_state.second.pos)
+  current_state.second.days = getDaysInMonth(date2)
+  current_state.second.year = getYear(date2)
+
+  const cal_month1 = calendarMonth({ pos: current_state.first.pos }, contacts.add(month_name1))
+  let cal_days1 = calendarDays({
+    name: days_name1, 
+    year: current_state.first.year,
+    month: current_state.first.pos, 
+    days: current_state.first.days,
+    start_cal: true 
+  }, contacts.add(days_name1))
+  const cal_month2 = calendarMonth({ pos: current_state.second.pos }, contacts.add(month_name2))
+  let cal_days2 = calendarDays({
+    name: days_name2, 
+    year: current_state.second.year,
+    month: current_state.second.pos, 
+    days: current_state.second.days, 
+    start_cal: false 
+  }, contacts.add(days_name2))
   
 	const weekList= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
   const container = bel`<div class=${css['calendar-container']}></div>`
 
-	const cal = bel`<div class=${css.calendar}>${cal_month1}${makeWeekDays()}${cal_days1}</div>`
-  container.append(cal)
+	const cal1 = bel`<div class=${css.calendar}>${cal_month1}${makeWeekDays()}${cal_days1}</div>`
+	const cal2 = bel`<div class=${css.calendar}>${cal_month2}${makeWeekDays()}${cal_days2}</div>`
+  container.append(cal1, cal2)
 
-  return bel`<div class=${css.datepicker}> <div class=${css["calendar-header"]}></div> ${container} </div>`
+  const demo = bel`<div class=${css.datepicker}> <div class=${css["calendar-header"]}></div> ${container} </div>`
+  demo.onclick = (e) => handle_demo_onclick(e)
+  
+  return demo
 
   function makeWeekDays () {
-      const el = bel`<section class=${css['calendar-weekday']} role="weekday"></section>`
-      weekList.map( w => {
-          let div = bel`<div class=${css['calendar-week']} role="week">${w.slice(0 ,1)}</div>`
-          el.append(div)
-      })
-      return el
+    const el = bel`<section class=${css['calendar-weekday']} role="weekday"></section>`
+    weekList.map( w => {
+      let div = bel`<div class=${css['calendar-week']} role="week">${w.slice(0 ,1)}</div>`
+      el.append(div)
+    })
+    return el
   }
 
-  //////
+  function handle_demo_onclick (event) {
+    const target = event.target.tagName
+    if (target === 'CALENDAR-DAYS' || target === 'CALENDAR-MONTH') return
+    clearAll()
+  } 
 
-	function handle_click (name, target) {
-		const $cal_month = contacts.by_name[month_name1]
-		const $cal_days = contacts.by_name[days_name1]
-		let new_pos
-		if (name === 'cal-month') {
-			if (target === 'prev') new_pos = current_state.first.pos - 1
-			else if (target === 'next') new_pos = current_state.first.pos + 1
-			if ((current_state.second.pos - current_state.first.pos) === 1 && new_pos > current_state.first.pos) return
-			current_state.first.pos = new_pos
-			$cal_month.notify($cal_month.make({ to: $cal_month.address, type: 'update', data : { pos: new_pos } }))
-			$cal_days.notify($cal_days.make({ to: $cal_days.address, type: 'change', data: { current: new_pos } }))
-		}
-	}
-
+  function handle_click (name, target) {
+    // if (current_state.first.value || current_state.second.value) return clearAll()
+    const $cal_month = contacts.by_name[name]
+    let $cal_days
+    let new_pos
+    if (name === month_name1) {
+      if (current_state.first.value) return
+      $cal_days = contacts.by_name[days_name1]
+      if (target === 'prev') new_pos = current_state.first.pos - 1
+      else if (target === 'next') new_pos = current_state.first.pos + 1
+      if ((current_state.second.pos - current_state.first.pos) === 1 && new_pos > current_state.first.pos) return
+      current_state.first.pos = new_pos
+    } else if (name === month_name2) {
+      if (current_state.second.value) return
+      $cal_days = contacts.by_name[days_name2]
+      if (target === 'prev') new_pos = current_state.second.pos - 1
+      else if (target === 'next') new_pos = current_state.second.pos + 1
+      if ((current_state.second.pos - current_state.first.pos) === 1 && new_pos < current_state.second.pos) return
+      current_state.second.pos = new_pos
+    }
+    $cal_month.notify($cal_month.make({ to: $cal_month.address, type: 'update', data : { pos: new_pos } }))
+    $cal_days.notify($cal_days.make({ to: $cal_days.address, type: 'update', data: { pos: new_pos } }))
+  }
+  
   function clearAll () {
-			const keys = get_all_cal_days()
-			keys.forEach(key => {
-				const name = contacts.by_name[key].name
-				const $name = contacts.by_name[name]
-				$name.notify($name.make({ to: $name.address, type: 'clear' }))
-			})
+    const keys = get_all_cal_names()
+    keys.forEach(key => {
+      const name = contacts.by_name[key].name
+      const $name = contacts.by_name[name]
+      $name.notify($name.make({ to: $name.address, type: 'clear' }))
+    })
+    current_state.first.value = null
+    current_state.second.value = null
   }
 
 
-  function store_val (from, type, data) {
+  function handle_selection (from, type, data) {
     const name = contacts.by_address[from].name
     if (type === 'value-first') {
-      current_state.first.value = data.body
-      type = (name === 'calendar1') ? 'first-selected-by-startcal' : 'first-selected-by-endcal' 
+      if (name === 'cal-days-1') {
+        current_state.first.value = data.body
+        type = 'first-selected-by-startcal'
+       } else {
+        current_state.second.value = data.body
+        type = 'first-selected-by-endcal' 
+      }
     } else if (type === 'value-second') {
-      current_state.second.value = data.body
-      type = 'second-selected' 
+      type = 'second-selected'
+      if (name === 'cal-days-1') {
+        current_state.first.value = data.body
+       } else {
+        current_state.second.value = data.body
+      }
     }
-		const keys = get_all_cal_days()
+		const keys = get_all_cal_names()
 		keys.forEach(key => {
 			const cal_name = contacts.by_name[key].name
 			if (cal_name === name) return
@@ -100,7 +151,7 @@ function demo () {
 		})
   }
 
-	function get_all_cal_days () {
+	function get_all_cal_names () {
 		const keys = Object.keys(contacts.by_name)
 		return keys.filter(key => contacts.by_name[key].name.includes('cal-days'))
 	}
@@ -120,7 +171,8 @@ body {
 }
 .datepicker {
     position: relative;
-    max-width: 510px;
+    background-color: white;
+    height: 100%;
 }
 .datepicker-body {
     display: grid;

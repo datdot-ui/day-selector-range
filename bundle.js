@@ -22,77 +22,128 @@ function demo () {
     const name = contacts.by_address[from].name
     console.log('demo', { type, from, name, msg, data })
 		if (type === 'click') handle_click(name, data.name)
-    if (type === 'value-first' || type === 'value-second') return store_val(from, type, data)
+    if (type === 'value-first' || type === 'value-second') return handle_selection(from, type, data)
     if (type === 'clear') return clearAll()
 	}
 
   // elements	
 	const current_state = {
-		first: { pos: 0, value: null },
-		second:	{ pos: 4, value: null }
+		first: { pos: 1, value: null },
+		second:	{ pos: 7, value: null }
 	}
-	const month_name1 = `cal-month-${id++}`
-	const month_name2 = `cal-month-${id++}`
-	const days_name1 = `cal-days-${id++}`
-	const days_name2 = `cal-days-${id++}`
+	const month_name1 = `cal-month-1`
+	const days_name1 = `cal-days-1`
+	const month_name2 = `cal-month-2`
+	const days_name2 = `cal-days-2`
 
-  const cal_month1 = calendarMonth({ pos: 3 }, contacts.add(month_name1))
-  let cal_days1 = calendarDays({name: 'calendar-days' }, contacts.add('cal-days'))
+  const date1 = setMonth(new Date(), current_state.first.pos)
+  current_state.first.days = getDaysInMonth(date1)
+  current_state.first.year = getYear(date1)
+  
+  const date2 = setMonth(new Date(), current_state.second.pos)
+  current_state.second.days = getDaysInMonth(date2)
+  current_state.second.year = getYear(date2)
+
+  const cal_month1 = calendarMonth({ pos: current_state.first.pos }, contacts.add(month_name1))
+  let cal_days1 = calendarDays({
+    name: days_name1, 
+    year: current_state.first.year,
+    month: current_state.first.pos, 
+    days: current_state.first.days,
+    start_cal: true 
+  }, contacts.add(days_name1))
+  const cal_month2 = calendarMonth({ pos: current_state.second.pos }, contacts.add(month_name2))
+  let cal_days2 = calendarDays({
+    name: days_name2, 
+    year: current_state.second.year,
+    month: current_state.second.pos, 
+    days: current_state.second.days, 
+    start_cal: false 
+  }, contacts.add(days_name2))
   
 	const weekList= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
   const container = bel`<div class=${css['calendar-container']}></div>`
 
-	const cal = bel`<div class=${css.calendar}>${cal_month1}${makeWeekDays()}${cal_days1}</div>`
-  container.append(cal)
+	const cal1 = bel`<div class=${css.calendar}>${cal_month1}${makeWeekDays()}${cal_days1}</div>`
+	const cal2 = bel`<div class=${css.calendar}>${cal_month2}${makeWeekDays()}${cal_days2}</div>`
+  container.append(cal1, cal2)
 
-  return bel`<div class=${css.datepicker}> <div class=${css["calendar-header"]}></div> ${container} </div>`
+  const demo = bel`<div class=${css.datepicker}> <div class=${css["calendar-header"]}></div> ${container} </div>`
+  demo.onclick = (e) => handle_demo_onclick(e)
+  
+  return demo
 
   function makeWeekDays () {
-      const el = bel`<section class=${css['calendar-weekday']} role="weekday"></section>`
-      weekList.map( w => {
-          let div = bel`<div class=${css['calendar-week']} role="week">${w.slice(0 ,1)}</div>`
-          el.append(div)
-      })
-      return el
+    const el = bel`<section class=${css['calendar-weekday']} role="weekday"></section>`
+    weekList.map( w => {
+      let div = bel`<div class=${css['calendar-week']} role="week">${w.slice(0 ,1)}</div>`
+      el.append(div)
+    })
+    return el
   }
 
-  //////
+  function handle_demo_onclick (event) {
+    const target = event.target.tagName
+    if (target === 'CALENDAR-DAYS' || target === 'CALENDAR-MONTH') return
+    clearAll()
+  } 
 
-	function handle_click (name, target) {
-		const $cal_month = contacts.by_name[month_name1]
-		const $cal_days = contacts.by_name[days_name1]
-		let new_pos
-		if (name === 'cal-month') {
-			if (target === 'prev') new_pos = current_state.first.pos - 1
-			else if (target === 'next') new_pos = current_state.first.pos + 1
-			if ((current_state.second.pos - current_state.first.pos) === 1 && new_pos > current_state.first.pos) return
-			current_state.first.pos = new_pos
-			$cal_month.notify($cal_month.make({ to: $cal_month.address, type: 'update', data : { pos: new_pos } }))
-			$cal_days.notify($cal_days.make({ to: $cal_days.address, type: 'change', data: { current: new_pos } }))
-		}
-	}
-
+  function handle_click (name, target) {
+    // if (current_state.first.value || current_state.second.value) return clearAll()
+    const $cal_month = contacts.by_name[name]
+    let $cal_days
+    let new_pos
+    if (name === month_name1) {
+      if (current_state.first.value) return
+      $cal_days = contacts.by_name[days_name1]
+      if (target === 'prev') new_pos = current_state.first.pos - 1
+      else if (target === 'next') new_pos = current_state.first.pos + 1
+      if ((current_state.second.pos - current_state.first.pos) === 1 && new_pos > current_state.first.pos) return
+      current_state.first.pos = new_pos
+    } else if (name === month_name2) {
+      if (current_state.second.value) return
+      $cal_days = contacts.by_name[days_name2]
+      if (target === 'prev') new_pos = current_state.second.pos - 1
+      else if (target === 'next') new_pos = current_state.second.pos + 1
+      if ((current_state.second.pos - current_state.first.pos) === 1 && new_pos < current_state.second.pos) return
+      current_state.second.pos = new_pos
+    }
+    $cal_month.notify($cal_month.make({ to: $cal_month.address, type: 'update', data : { pos: new_pos } }))
+    $cal_days.notify($cal_days.make({ to: $cal_days.address, type: 'update', data: { pos: new_pos } }))
+  }
+  
   function clearAll () {
-			const keys = get_all_cal_days()
-			keys.forEach(key => {
-				const name = contacts.by_name[key].name
-				const $name = contacts.by_name[name]
-				$name.notify($name.make({ to: $name.address, type: 'clear' }))
-			})
+    const keys = get_all_cal_names()
+    keys.forEach(key => {
+      const name = contacts.by_name[key].name
+      const $name = contacts.by_name[name]
+      $name.notify($name.make({ to: $name.address, type: 'clear' }))
+    })
+    current_state.first.value = null
+    current_state.second.value = null
   }
 
 
-  function store_val (from, type, data) {
+  function handle_selection (from, type, data) {
     const name = contacts.by_address[from].name
     if (type === 'value-first') {
-      current_state.first.value = data.body
-      type = (name === 'calendar1') ? 'first-selected-by-startcal' : 'first-selected-by-endcal' 
+      if (name === 'cal-days-1') {
+        current_state.first.value = data.body
+        type = 'first-selected-by-startcal'
+       } else {
+        current_state.second.value = data.body
+        type = 'first-selected-by-endcal' 
+      }
     } else if (type === 'value-second') {
-      current_state.second.value = data.body
-      type = 'second-selected' 
+      type = 'second-selected'
+      if (name === 'cal-days-1') {
+        current_state.first.value = data.body
+       } else {
+        current_state.second.value = data.body
+      }
     }
-		const keys = get_all_cal_days()
+		const keys = get_all_cal_names()
 		keys.forEach(key => {
 			const cal_name = contacts.by_name[key].name
 			if (cal_name === name) return
@@ -101,7 +152,7 @@ function demo () {
 		})
   }
 
-	function get_all_cal_days () {
+	function get_all_cal_names () {
 		const keys = Object.keys(contacts.by_name)
 		return keys.filter(key => contacts.by_name[key].name.includes('cal-days'))
 	}
@@ -121,7 +172,8 @@ body {
 }
 .datepicker {
     position: relative;
-    max-width: 510px;
+    background-color: white;
+    height: 100%;
 }
 .datepicker-body {
     display: grid;
@@ -22912,8 +22964,10 @@ function calendar_days (opts, parent_wire) {
   function listen (msg) {
 		const { head, refs, type, data, meta } = msg // receive msg
 		const [from, to] = head
-		console.log('Cal days', { type, name: contacts.by_address[from].name, msg, data })
+		const name = contacts.by_address[from].name
+		console.log('Cal days', { type, name, msg, data })
 		// handlers
+		if (type === 'click') onclick(contacts.by_name[name].pos)
 		if (type === 'clear') return clear_self()
 		if (type === 'selecting-second') return colorRange(0, current_state.opts.value)
 		if (type === 'first-selected-by-startcal') return setStatus('first-selected-by-startcal')
@@ -22921,7 +22975,7 @@ function calendar_days (opts, parent_wire) {
 		if (type === 'second-selected') return setStatus('second-selected-by-other')
 		if (type === 'color-from-start') return colorRange(0, current_state.opts.value)
 		if (type === 'color-to-end') return colorRange(current_state.opts.value, days + 1)
-		if (type === 'change') return render_new_cal(data)
+		if (type === 'update') return update_cal(data)
 		// if (type === 'color-range-from-start') return 
 		// if (type === 'color-range-to-end') return 
 		// if (type === 'not-selecting-second') {}
@@ -22933,14 +22987,15 @@ function calendar_days (opts, parent_wire) {
 	const el = document.createElement('calendar-days')
 	const shadow = el.attachShadow({mode: 'closed'})
 
-	const calendar = makeDays(days)
-	let buttons = [...calendar.children]
+	const { calendar, buttons } = make_calendar()
+	// let buttons = [...calendar.children]
+	adjust_cal_to_month()
 	calendar.onmousemove = onmousemove
-	calendar.onclick = onclick
+	// calendar.onclick = onclick
 	calendar.onmouseleave = onmouseleave
 	calendar.onmouseenter = onmouseenter
 
-	document.body.onclick = clear_all
+	// document.body.onclick = clear_all
 
 	const custom_theme = new CSSStyleSheet()
 	custom_theme.replaceSync(theme)
@@ -22954,23 +23009,23 @@ function onmousemove (event) {
 	console.log('onmousemove - current status', name, current_state.opts.status)
 	const btn = event.target
 	const num = parseInt(btn.dataset.num)
-	if (!num || btn.classList.contains('disabled-day')) return
+	if (!num || btn.classList.value === 'disabled-day') return
 	if (current_state.opts.status === 'first-selected-by-self') return markRange(current_state.opts.value, num)
 	if (current_state.opts.status === 'first-selected-by-startcal') return markRange(0, num)
-	if (current_state.opts.status === 'first-selected-by-endcal') return markRange(num, days + 1)
+	if (current_state.opts.status === 'first-selected-by-endcal') return markRange(num, current_state.opts.days + 1)
 }
-function onclick (event) {
-	event.stopPropagation()
-	const btn = event.target
-	const current = parseInt(btn.dataset.num)
-	if (!current || btn.classList.contains('disabled-day')) return
-	console.log('onclick - current status', current_state.opts.status, current )
-	if (current_state.opts.status === 'cleared') return selectFirst(btn, current)
-	if (current_state.opts.status === 'first-selected-by-self') return selectSecond(btn, current)
-	if (current_state.opts.status === 'first-selected-by-startcal') return selectSecond(btn, current)
-	if (current_state.opts.status === 'first-selected-by-endcal') return selectSecond(btn, current)
-	if (current_state.opts.status === 'second-selected-by-self') return selectFirst(btn, current)
-	if (current_state.opts.status === 'second-selected-by-other') return selectFirst(btn, current)
+function onclick (pos) {
+	// event.stopPropagation()
+	// const btn = event.target
+	const btn = buttons[pos]
+	if (!pos || btn.classList.value === 'disabled-day') return
+	console.log('onclick - current status', current_state.opts.status, pos )
+	if (current_state.opts.status === 'cleared') return selectFirst(btn, pos)
+	if (current_state.opts.status === 'first-selected-by-self') return selectSecond(btn, pos)
+	if (current_state.opts.status === 'first-selected-by-startcal') return selectSecond(btn, pos)
+	if (current_state.opts.status === 'first-selected-by-endcal') return selectSecond(btn, pos)
+	if (current_state.opts.status === 'second-selected-by-self') return selectFirst(btn, pos)
+	if (current_state.opts.status === 'second-selected-by-other') return selectFirst(btn, pos)
 }
 function onmouseleave (event) {
 	console.log('onmouseleave - first selected', current_state.opts.status)
@@ -22978,7 +23033,7 @@ function onmouseleave (event) {
 	if (current_state.opts.status === 'first-selected-by-endcal') return unmark_self()
 	if (current_state.opts.status === 'first-selected-by-self') {
 		// current_state.opts.value = void 0
-		if (current_state.opts.start_cal) markRange(current_state.opts.value, days + 1)
+		if (current_state.opts.start_cal) markRange(current_state.opts.value, current_state.opts.days + 1)
 		else markRange(0, current_state.opts.value)
 	}
 }
@@ -22990,7 +23045,8 @@ function onmouseenter (event) {
 
 	// helpers
 	function unmark_self () {
-		for (var i = 0; i < buttons.length; i++) {
+		const len = Object.keys(buttons).length
+		for (var i = 1; i < len + 1; i++) {
 			buttons[i].classList.remove('date-in-range')
 			buttons[i].classList.remove('date-selected')
 		}		
@@ -23009,18 +23065,17 @@ function onmouseenter (event) {
 
 	function selectFirst (btn, current) {
 		clear_all()
-
 		btn.classList.add('date-selected')
 		setStatus('first-selected-by-self')
 		current_state.opts.value = current
-		$parent.notify($parent.make({ to: $parent.address, type: 'value-first', data: { body: [year, month+1, current_state.opts.value] } }))
+		$parent.notify($parent.make({ to: $parent.address, type: 'value-first', data: { body: [current_state.opts.year, current_state.opts.month+1, current_state.opts.value] } }))
 	}
 
 	function selectSecond (btn, current) {
 		btn.classList.add('date-selected')
 		setStatus('second-selected-by-self')
 		current_state.opts.value = current
-		$parent.notify($parent.make({ to: $parent.address, type: 'value-second', data: { body: [year, month+1, current_state.opts.value] } }))
+		$parent.notify($parent.make({ to: $parent.address, type: 'value-second', data: { body: [current_state.opts.year, current_state.opts.month+1, current_state.opts.value] } }))
 	}
 
 	function setStatus( nextStatus ) {
@@ -23029,75 +23084,104 @@ function onmouseenter (event) {
 		$parent.notify($parent.make({ to: $parent.address, type: 'status', data: { status: nextStatus } }))
 	}
 
-	function render_new_cal(data) {
-		const { current } = data
-		let date = setMonth(new Date(), current)
-		let year = getYear(date)
-		let days = getDaysInMonth(date)
-		year = year
-		days = days
-
-		const cal = makeDays(days)
-		buttons = [...cal.children]
-		cal.onmousemove = onmousemove
-		cal.onclick = onclick
-		cal.onmouseleave = onmouseleave
-		cal.onmouseenter = onmouseenter
-		el.innerHTML = ''
-		el.append(cal)	
+	function update_cal(data) {
+		const { pos } = data
+		let date = setMonth(new Date(), pos)
+		current_state.opts.year = getYear(date)
+		current_state.opts.days = getDaysInMonth(date)
+		current_state.opts.month = getMonth(date)
+		adjust_cal_to_month()
 	}
 
 	function markRange (A,B) {
-		console.log('mark range', {A, B})
+		console.log('mark range', {A, B, days: current_state.opts.days})
 		if (A === B) return // onlyKeepFirst()
 		if (A < B) colorRange(A, B)
 		else colorRange(B, A)
 	}
 
 	function colorRange (start, end) {
-		buttons.map( btn => {
-			let current = parseInt(btn.dataset.num)
-			if (!current || btn.classList.contains('disabled-day')) return
+		const len = Object.keys(buttons).length + 1
+		for (var i = 1; i < len; i++) {
+			const btn = buttons[i]
+			// let current = parseInt(btn.dataset.num)
+			if (!btn || btn.classList.value === 'disabled-day') return
 			btn.classList.remove('date-in-range')
-			if (current < start || current > end) {
+			if (i < start || i > end) {
 				btn.classList.remove('date-selected')
 			}
-			if (current > start && current < end) {
-				console.log('adding date-in-range class for', {current})
+			if (i > start && i < end) {
+				console.log('adding date-in-range class for', {i})
 				btn.classList.add('date-in-range')
 			}
-		})
+		}
+		// btns_keys.map( key => {
+		// 	const btn = buttons[key]
+		// 	let current = parseInt(btn.dataset.num)
+		// 	if (!current || btn.classList.value === 'disabled-day') return
+		// 	btn.classList.remove('date-in-range')
+		// 	if (current < start || current > end) {
+		// 		btn.classList.remove('date-selected')
+		// 	}
+		// 	if (current > start && current < end) {
+		// 		console.log('adding date-in-range class for', {current})
+		// 		btn.classList.add('date-in-range')
+		// 	}
+		// })
 	}
 		
 	function notifyOther () { $parent.notify($parent.make({ to: $parent.address, type: 'selecting-second' })) }
 
-	function makeDays (days) {
-		const el = document.createElement('section')
-		el.classList.add('calendar-days')
-		getSpaceInPrevMonth(el)
-
-		for (let i = 1; i < days + 1; i++) {
+	function adjust_cal_to_month () {
+		for (let i = 1; i < Object.keys(buttons).length + 1; i++) {
+			const btn = buttons[i]
+			const attributes = [...btn.attributes]
+			attributes.forEach(attr => {
+				if (attr.name === 'tabIndex' || attr.name === 'data-num') return
+				btn.removeAttribute(attr.name)
+			})
+			const { year, month } = current_state.opts
 			let formatDate = format(new Date(year, month, i), 'd MMMM yyyy, EEEE')
-			let btn = button({ name: 'buton', text: i}, contacts.add(`button-${i}`))
-			btn.setAttribute('tabIndex', '-1')
 			btn.setAttribute('aria-label', formatDate)
-			btn.setAttribute('data-date', `${year}-${month+1}-${i}`)
-			btn.setAttribute('data-num', `${i}`)
+			if (i > current_state.opts.days) {
+				btn.style.visibility = "hidden"
+				continue
+			}
+			if (btn.style.visibility === "hidden") btn.style.visibility = 'visible'
 			if (isToday(new Date(year, month, i)) ) {
 				btn.classList.add('today')
 				btn.setAttribute('aria-today', true)
 			} else { 
 				btn.classList.add('day')
-				if ( isPast(new Date(year, month, i)) ) btn.classList.add('disabled-day')
+				if (isPast(new Date(year, month, i))) btn.classList.add('disabled-day')
 				btn.setAttribute('aria-today', false)
 			}
-			el.append(btn)
 		}
-		
-		return el
+	}
+
+	function make_calendar () {
+		const days = 31
+		const calendar = document.createElement('section')
+		calendar.classList.add('calendar-days')
+		getSpaceInPrevMonth(calendar)
+		const buttons = {}
+		const { year, month } = current_state.opts
+		for (let i = 1; i < days + 1; i++) {
+			let formatDate = format(new Date(year, month, i), 'd MMMM yyyy, EEEE')
+			const btn_name = `button-${id++}`
+			let btn = button({ name: 'buton', text: i}, contacts.add(btn_name))
+			btn.setAttribute('tabIndex', '-1')
+			btn.setAttribute('aria-label', formatDate)
+			btn.setAttribute('data-num', `${i}`)
+			buttons[i] = btn
+			contacts.by_name[btn_name].pos = i
+			calendar.append(btn)
+		}
+		return { calendar, buttons }
 	}
 
 	function getSpaceInPrevMonth (el) {
+		const { year, month } = current_state.opts
 		// get days in previous month
 		let daysInPrevMonth = getDaysInMonth(new Date(year, month-1))
 		// get day in prev month which means to add how many spans
