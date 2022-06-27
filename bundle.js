@@ -23009,7 +23009,7 @@ function onmousemove (event) {
 	console.log('onmousemove - current status', name, current_state.opts.status)
 	const btn = event.target
 	const num = parseInt(btn.dataset.num)
-	if (!num || btn.classList.value === 'disabled-day') return
+	if (!num || btn.classList.value.includes('disabled-day')) return
 	if (current_state.opts.status === 'first-selected-by-self') return markRange(current_state.opts.value, num)
 	if (current_state.opts.status === 'first-selected-by-startcal') return markRange(0, num)
 	if (current_state.opts.status === 'first-selected-by-endcal') return markRange(num, current_state.opts.days + 1)
@@ -23018,7 +23018,7 @@ function onclick (pos) {
 	// event.stopPropagation()
 	// const btn = event.target
 	const btn = buttons[pos]
-	if (!pos || btn.classList.value === 'disabled-day') return
+	if (!pos || btn.classList.value.includes('disabled-day')) return
 	console.log('onclick - current status', current_state.opts.status, pos )
 	if (current_state.opts.status === 'cleared') return selectFirst(btn, pos)
 	if (current_state.opts.status === 'first-selected-by-self') return selectSecond(btn, pos)
@@ -23105,7 +23105,7 @@ function onmouseenter (event) {
 		for (var i = 1; i < len; i++) {
 			const btn = buttons[i]
 			// let current = parseInt(btn.dataset.num)
-			if (!btn || btn.classList.value === 'disabled-day') return
+			if (!btn || btn.classList.value.includes('disabled-day')) continue
 			btn.classList.remove('date-in-range')
 			if (i < start || i > end) {
 				btn.classList.remove('date-selected')
@@ -23118,7 +23118,7 @@ function onmouseenter (event) {
 		// btns_keys.map( key => {
 		// 	const btn = buttons[key]
 		// 	let current = parseInt(btn.dataset.num)
-		// 	if (!current || btn.classList.value === 'disabled-day') return
+		// 	if (!current || btn.classList.value.includes('disabled-day')) return
 		// 	btn.classList.remove('date-in-range')
 		// 	if (current < start || current > end) {
 		// 		btn.classList.remove('date-selected')
