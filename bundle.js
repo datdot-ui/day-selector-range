@@ -23143,6 +23143,7 @@ function onmouseenter (event) {
 			const { year, month } = current_state.opts
 			let formatDate = format(new Date(year, month, i), 'd MMMM yyyy, EEEE')
 			btn.setAttribute('aria-label', formatDate)
+			btn.classList.add('day')
 			if (i > current_state.opts.days) {
 				btn.style.visibility = "hidden"
 				continue
@@ -23152,7 +23153,6 @@ function onmouseenter (event) {
 				btn.classList.add('today')
 				btn.setAttribute('aria-today', true)
 			} else { 
-				btn.classList.add('day')
 				if (isPast(new Date(year, month, i))) btn.classList.add('disabled-day')
 				btn.setAttribute('aria-today', false)
 			}
