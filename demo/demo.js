@@ -32,16 +32,10 @@ function demo () {
 	}
 	const month_name1 = `cal-month-1`
 	const days_name1 = `cal-days-1`
-	const month_name2 = `cal-month-2`
-	const days_name2 = `cal-days-2`
 
   const date1 = setMonth(new Date(), current_state.first.pos)
   current_state.first.days = getDaysInMonth(date1)
   current_state.first.year = getYear(date1)
-  
-  const date2 = setMonth(new Date(), current_state.second.pos)
-  current_state.second.days = getDaysInMonth(date2)
-  current_state.second.year = getYear(date2)
 
   const cal_month1 = calendarMonth({ pos: current_state.first.pos }, contacts.add(month_name1))
   let cal_days1 = calendarDays({
@@ -51,22 +45,13 @@ function demo () {
     days: current_state.first.days,
     start_cal: true 
   }, contacts.add(days_name1))
-  const cal_month2 = calendarMonth({ pos: current_state.second.pos }, contacts.add(month_name2))
-  let cal_days2 = calendarDays({
-    name: days_name2, 
-    year: current_state.second.year,
-    month: current_state.second.pos, 
-    days: current_state.second.days, 
-    start_cal: false 
-  }, contacts.add(days_name2))
   
 	const weekList= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
   const container = bel`<div class=${css['calendar-container']}></div>`
 
 	const cal1 = bel`<div class=${css.calendar}>${cal_month1}${makeWeekDays()}${cal_days1}</div>`
-	const cal2 = bel`<div class=${css.calendar}>${cal_month2}${makeWeekDays()}${cal_days2}</div>`
-  container.append(cal1, cal2)
+  container.append(cal1)
 
   const demo = bel`<div class=${css.datepicker}> <div class=${css["calendar-header"]}></div> ${container} </div>`
   demo.onclick = (e) => handle_demo_onclick(e)
@@ -98,15 +83,7 @@ function demo () {
       $cal_days = contacts.by_name[days_name1]
       if (target === 'prev') new_pos = current_state.first.pos - 1
       else if (target === 'next') new_pos = current_state.first.pos + 1
-      if ((current_state.second.pos - current_state.first.pos) === 1 && new_pos > current_state.first.pos) return
       current_state.first.pos = new_pos
-    } else if (name === month_name2) {
-      if (current_state.second.value) return
-      $cal_days = contacts.by_name[days_name2]
-      if (target === 'prev') new_pos = current_state.second.pos - 1
-      else if (target === 'next') new_pos = current_state.second.pos + 1
-      if ((current_state.second.pos - current_state.first.pos) === 1 && new_pos < current_state.second.pos) return
-      current_state.second.pos = new_pos
     }
     $cal_month.notify($cal_month.make({ to: $cal_month.address, type: 'update', data : { pos: new_pos } }))
     $cal_days.notify($cal_days.make({ to: $cal_days.address, type: 'update', data: { pos: new_pos } }))
