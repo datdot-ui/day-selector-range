@@ -19,6 +19,9 @@ sheet.replaceSync(default_opts.theme)
 
 module.exports = calendar_days
 
+calendar_days.help = () => { return { opts: default_opts } }
+
+
 function calendar_days (opts, parent_wire) {
 	const { 
 		name = default_opts.name,
@@ -170,7 +173,7 @@ function onmouseenter (event) {
 
 	function markRange (A,B) {
 		console.log('mark range', {A, B, days: current_state.opts.days})
-		if (A === B) return // onlyKeepFirst()
+		if (A === B) return
 		if (A < B) colorRange(A, B)
 		else colorRange(B, A)
 	}
@@ -190,19 +193,6 @@ function onmouseenter (event) {
 				btn.classList.add('date-in-range')
 			}
 		}
-		// btns_keys.map( key => {
-		// 	const btn = buttons[key]
-		// 	let current = parseInt(btn.dataset.num)
-		// 	if (!current || btn.classList.value.includes('disabled-day')) return
-		// 	btn.classList.remove('date-in-range')
-		// 	if (current < start || current > end) {
-		// 		btn.classList.remove('date-selected')
-		// 	}
-		// 	if (current > start && current < end) {
-		// 		console.log('adding date-in-range class for', {current})
-		// 		btn.classList.add('date-in-range')
-		// 	}
-		// })
 	}
 		
 	function notifyOther () { $parent.notify($parent.make({ to: $parent.address, type: 'selecting-second' })) }
@@ -257,7 +247,6 @@ function onmouseenter (event) {
 
 	function getSpaceInPrevMonth (el) {
 		const { year, month } = current_state.opts
-		// get days in previous month
 		let daysInPrevMonth = getDaysInMonth(new Date(year, month-1))
 		// get day in prev month which means to add how many spans
 		let dayInPrevMonth = getDay(new Date(year, month-1, daysInPrevMonth))
@@ -267,17 +256,15 @@ function onmouseenter (event) {
 				el.append((span))
 		}
 	}
-
 }
 
-	function init_date () {
-		const date = new Date()
-		let year = getYear(date)
-		let month = getMonth(date)
-		let days = getDaysInMonth(date)
-		return { year, month, days }
-	}
-
+function init_date () {
+	const date = new Date()
+	let year = getYear(date)
+	let month = getMonth(date)
+	let days = getDaysInMonth(date)
+	return { year, month, days }
+}
 
 function get_theme () {
 	return `

@@ -14,6 +14,7 @@ Help
 Incoming message types
 ---
 
+- `click` returns onclick(contacts.by_name[name].pos)
 - `clear` returns clear_self()
 - `selecting-second` returns colorRange(0, current_state.opts.value)
 - `first-selected-by-startcal` returns setStatus('first-selected-by-startcal`
@@ -21,15 +22,13 @@ Incoming message types
 - `second-selected` returns setStatus('second-selected-by-other`
 - `color-from-start` returns colorRange(0, current_state.opts.value)
 - `color-to-end` returns colorRange(current_state.opts.value, days + 1)
-- `change` returns render_new_cal(data)
-- `color-range-from-start`
+- `update` returns update_cal(data)
 
 
 Outgoing message types
 ---
 
 **parent**
-- `help` sends info on current state
 - `clear`
 - `value-first`
 - `value-second`
