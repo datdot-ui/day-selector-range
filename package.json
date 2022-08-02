@@ -29,7 +29,7 @@
     "bel": "^6.0.0",
     "csjs-inject": "^1.0.1",
     "datdot-ui-button": "github:datdot-ui/button#v0.0.4-alpha",
-    "datdot-ui-calendar-days": "github:datdot-ui/calendar-days#v0.0.4-alpha",
+    "datdot-ui-calendar-month": "github:datdot-ui/calendar-month#v0.0.4-alpha",
     "date-fns": "^2.28.0",
     "protocol-maker": "github:datdotorg/protocol-maker#v0.0.1-alpha"
   }

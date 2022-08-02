@@ -1,9 +1,7 @@
 const bel = require('bel')
 const csjs = require('csjs-inject')
 const protocol_maker = require('protocol-maker')
-const foo = require('date-fns')
-const { isPast, isFuture, setMonth, getYear, getMonth, format, getDaysInMonth } = require('date-fns')
-const button = require('datdot-ui-button')
+const { setMonth, getYear, getDaysInMonth } = require('date-fns')
 // widgets
 const calendarMonth = require('datdot-ui-calendar-month')
 const calendarDays = require('..')
