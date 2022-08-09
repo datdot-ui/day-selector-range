@@ -1,7 +1,7 @@
 {
-  "name": "datdot-ui-calendar-days",
+  "name": "datdot-ui-day-selector-range",
   "version": "0.0.4-alpha",
-  "description": "vanilla js calendar-days component",
+  "description": "vanilla js day-selector-range component",
   "main": "src/index.js",
   "scripts": {
     "start": "budo demo/demo.js:bundle.js --open --live",
@@ -10,17 +10,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/datdot-ui/calendar-days.git"
+    "url": "git+https://github.com/datdot-ui/day-selector-range.git"
   },
   "keywords": [
     "datdot",
     "ui",
     "widget",
-    "calendar-days"
+    "day-selector-range"
   ],
   "author": "ninabreznik",
   "license": "MIT",
-  "homepage": "https://github.com/datdot-ui/calendar-days#readme",
+  "homepage": "https://github.com/datdot-ui/day-selector-range#readme",
   "devDependencies": {
     "browserify": "^17.0.0",
     "budo": "^11.6.4"
@@ -29,7 +29,7 @@
     "bel": "^6.0.0",
     "csjs-inject": "^1.0.1",
     "datdot-ui-button": "github:datdot-ui/button#v0.0.4-alpha",
-    "datdot-ui-calendar-month": "github:datdot-ui/calendar-month#v0.0.4-alpha",
+    "datdot-ui-month-selector": "github:datdot-ui/month-selector#v0.0.4-alpha",
     "date-fns": "^2.28.0",
     "protocol-maker": "github:datdotorg/protocol-maker#v0.0.1-alpha"
   }
