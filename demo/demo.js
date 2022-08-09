@@ -3,7 +3,7 @@ const csjs = require('csjs-inject')
 const protocol_maker = require('protocol-maker')
 const { setMonth, getYear, getDaysInMonth } = require('date-fns')
 // widgets
-const calendarMonth = require('datdot-ui-calendar-month')
+const calendarMonth = require('datdot-ui-month-selector')
 const calendarDays = require('..')
 
 var id = 0

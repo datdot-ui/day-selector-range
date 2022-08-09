@@ -4,7 +4,7 @@ const csjs = require('csjs-inject')
 const protocol_maker = require('protocol-maker')
 const { setMonth, getYear, getDaysInMonth } = require('date-fns')
 // widgets
-const calendarMonth = require('datdot-ui-calendar-month')
+const calendarMonth = require('datdot-ui-month-selector')
 const calendarDays = require('..')
 
 var id = 0
@@ -206,7 +206,7 @@ body {
 `
 
 document.body.append(demo())
-},{"..":344,"bel":3,"csjs-inject":6,"datdot-ui-calendar-month":338,"date-fns":152,"protocol-maker":340}],2:[function(require,module,exports){
+},{"..":344,"bel":3,"csjs-inject":6,"datdot-ui-month-selector":338,"date-fns":152,"protocol-maker":340}],2:[function(require,module,exports){
 var trailingNewlineRegex = /\n[\s]+$/
 var leadingNewlineRegex = /^\n[\s]+/
 var trailingSpaceRegex = /[\s]+$/
@@ -22391,7 +22391,10 @@ function button (opts, parent_wire) {
 	let text_field = document.createElement('span')
 	text_field.className = 'text'
 
-	var svgs = icons.map(icon => get_svg(`./src/svg/${icon.name}.svg`))
+	var svgs = icons.map(icon => {
+		const path = icon.path || './src/svg'
+		return get_svg(`${path}/${icon.name}.svg`)
+	})
 	svgs.forEach(svg => shadow.append(svg))
 	
 	if (text) {
@@ -22418,7 +22421,10 @@ function button (opts, parent_wire) {
 		if (icons.length) {
 			current_state.opts.icons = icons
 			svgs.forEach(icon => { shadow.removeChild(icon) })
-			svgs = icons.map(icon => get_svg(`./src/svg/${icon.name}.svg`))
+			svgs = icons.map(icon => {
+				const path = icon.path || './src/svg'
+				return get_svg(`${path}/${icon.name}.svg`)
+			})
 			svgs.forEach(svg => shadow.append(svg))
 		}
 		if (text && typeof text !== 'string') {
